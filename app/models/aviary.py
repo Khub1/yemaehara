@@ -14,7 +14,7 @@ class Aviario:
         self.disinfection_period_days = 30
         self.disinfection_due_date = None
         #######################################
-        self.assigned_lote = None
+        self.allocated_lote = None
         self.production = {}
         self.is_active = False
         #######################################

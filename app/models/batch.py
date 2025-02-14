@@ -22,7 +22,7 @@ class Lote:
         self.plote_avi_id = None
         # Cantidad
         self.plote_cantidad = plote_cantidad
-        self.plote_cvtadia = None
+        self.is_selling = False
         # Estado de producción 
         self.plote_fase = None
         self.assigned_aviario = None
@@ -135,7 +135,7 @@ class Lote:
         self._set_plote_id()
         self._set_plote_name()
         self._set_plote_fnac()
-        self._fetch_bios()
+        self.fetch_bios()
 
 
     ############################ Functions that happend once simulation runs ###########################
@@ -180,7 +180,6 @@ class Lote:
     def population_dynamics(self):
         """Compute the population dynamics for the lote"""
         try:
-            # Compute the number of deaths
             if self.plote_cantidad > 0:
                 productivity, mortality = self._compute_bios()
                 self.plote_deaths = round(self.plote_cantidad * mortality)
@@ -192,11 +191,26 @@ class Lote:
         except Exception as e:
             print(f"Error computing population dynamics: {str(e)}")
             return
+    
+    def sell_population(self, cantidad=2500):
+        """Sell a given amount of population"""
+        try:
+            if self.plote_cantidad > 0:
+                if cantidad > self.plote_cantidad:
+                    cantidad = self.plote_cantidad
+                self.plote_cantidad -= cantidad
+                print(f"{cantidad} population sold from lote {self.plote_id}")
+                if self.plote_cantidad == 0:
+                    aviary = self.farmer.memo_aviaries.get(self.plote_avi_id)
+                    if aviary:
+                        aviary.needs_disinfection = True
+                        print(f"Aviary {aviary.avi_id} needs disinfection")
+            else:
+                print("No population to sell.")
+        except Exception as e:
+            print(f"Error selling population: {str(e)}")
 
-    def assing_aviario(self, avi_id):
-        """Assign the lote to an aviario"""
-        self.plote_avi_id = avi_id
-        return 
+
 
     
     

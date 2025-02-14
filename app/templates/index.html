@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        input, button {
+            padding: 8px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Report Visualization</h1>
+    <form id="report-form">
+        <label for="avi_ids">Aviary IDs (comma-separated):</label>
+        <input type="text" id="avi_ids" name="avi_ids" required>
+        
+        <label for="lote_ids">Lote IDs (comma-separated):</label>
+        <input type="text" id="lote_ids" name="lote_ids" required>
+        
+        <label for="projection_time">Projection Time (days):</label>
+        <input type="number" id="projection_time" name="projection_time" required>
+        
+        <label for="initial_date">Initial Date (YYYY-MM-DD):</label>
+        <input type="date" id="initial_date" name="initial_date" required>
+        
+        <button type="submit">Generate Report</button>
+    </form>
+    <div id="report-container"></div>
+
+    <script>
+        document.getElementById('report-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const avi_ids = document.getElementById('avi_ids').value.split(',').map(id => parseInt(id.trim()));
+            const lote_ids = document.getElementById('lote_ids').value.split(',').map(id => parseInt(id.trim()));
+            const projection_time = parseInt(document.getElementById('projection_time').value);
+            const initial_date = document.getElementById('initial_date').value;
+
+            const response = await fetch('/dp_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    avi_ids: avi_ids,
+                    lote_ids: lote_ids,
+                    projection_time: projection_time,
+                    initial_date: initial_date
+                })
+            });
+            const report = await response.json();
+            displayReport(report);
+        });
+
+        function displayReport(report) {
+            const container = document.getElementById('report-container');
+            container.innerHTML = '';
+
+            for (const [time, entries] of Object.entries(report)) {
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+
+                thead.innerHTML = `
+                    <tr>
+                        <th>Date</th>
+                        <th>Aviary ID</th>
+                        <th>Aviary Name</th>
+                        <th>Aviary State</th>
+                        <th>Disinfection State</th>
+                        <th>Phase</th>
+                        <th>Lote ID</th>
+                        <th>Lote Name</th>
+                        <th>Age (Days)</th>
+                        <th>Age (Weeks)</th>
+                        <th>Quantity</th>
+                        <th>Production</th>
+                        <th>Deaths</th>
+                        <th>CVTADIA</th>
+                    </tr>
+                `;
+
+                entries.forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${entry.date}</td>
+                        <td>${entry.avi_id}</td>
+                        <td>${entry.avi_name}</td>
+                        <td>${entry.avi_state}</td>
+                        <td>${entry.avi_desinfection_state}</td>
+                        <td>${entry.avi_fase}</td>
+                        <td>${entry.avi_assigned_lote.lote_id}</td>
+                        <td>${entry.avi_assigned_lote.lote_name}</td>
+                        <td>${entry.avi_assigned_lote.lote_age_days}</td>
+                        <td>${entry.avi_assigned_lote.lote_age_weeks}</td>
+                        <td>${entry.avi_assigned_lote.lote_cantidad}</td>
+                        <td>${entry.avi_assigned_lote.lote_production}</td>
+                        <td>${entry.avi_assigned_lote.lote_deaths}</td>
+                        <td>${entry.avi_assigned_lote.lote_cvtadia}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                container.appendChild(table);
+            }
+        }
+    </script>
+</body>
+</html>

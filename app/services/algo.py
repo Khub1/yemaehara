@@ -2,42 +2,73 @@ from app.models import Lote
 from app.models import Aviario
 from app.models import Farmer 
 from flask import jsonify, request
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def dp_algo():
-    """Service function to test get_aviaries method of Farmer """
+    """Service function to optimize aviary allocation using DP."""
     data = request.get_json()
     avi_ids = data.get('avi_ids')
     lote_ids = data.get('lote_ids')
     projection_time = data.get('projection_time')
+    initial_date = datetime.strptime(data.get('initial_date'), '%Y-%m-%d').date()
 
     farmer = Farmer()
     report = {}
     dp = [{} for _ in range(projection_time + 1)]
     dp[0] = {(): (0, [])}  # Initial state with no assignments and zero production
 
+    # Fetch all data initially
+    farmer.fetch_aviaries(avi_ids)
+    farmer.fetch_lotes(lote_ids)
+    
     for t in range(1, projection_time + 1):
-        if t == 1:
-            farmer.fetch_aviaries(avi_ids)
-            farmer.fetch_lotes(lote_ids)
-            farmer.lote_to_aviary()
-            farmer.set_lote_fases()
-            farmer.set_system_date(datetime.now().date())
-            farmer.fetch_lote_dynamics()
+        current_date = initial_date + timedelta(days=t - 1)
+        farmer.set_date(current_date)
         
         for state, (production, assignments) in dp[t - 1].items():
             for aviary in farmer.memo_aviaries.values():
                 for lote in farmer.memo_lotes.values():
                     if lote.plote_avi_id == aviary.avi_id:
-                        # Create a new state by adding the new assignment
-                        new_state = state + ((aviary.avi_id, lote.plote_id),)
+                        # Option 1: Keep lote in the same aviary (R)
+                        farmer.fetch_dynamics()
+                        new_state = state + ((aviary.avi_id, lote.plote_id, "R"),)
                         new_production = production + lote.plote_production
-                        new_assignments = assignments + [(t, aviary.avi_id, lote.plote_id)]
-                        # Update the DP table with the new state and production
-                        if new_state not in dp[t] or dp[t][new_state][0] < new_production:
-                            dp[t][new_state] = (new_production, new_assignments)
+                        new_assignments = assignments + [(t, aviary.avi_id, lote.plote_id, "R")]
+                        dp[t][new_state] = (new_production, new_assignments)
 
-    # Find the optimal solution
+                        # Option 2: Transfer lote if phase transition is met (T)
+                        target_phase = None
+                        if lote.plote_fase == "recria" and lote.plote_age_weeks >= lote.plote_eprod:
+                            target_phase = "produccion"
+                        elif lote.plote_fase == "produccion":
+                            target_phase = "predescarte"
+                        
+                        if target_phase:
+                            target_aviary_ids = farmer.find_aviary(target_phase, lote)
+                            if target_aviary_ids:
+                                new_aviary_id = target_aviary_ids[0]
+                                farmer.transfer_lote(lote.plote_id, new_aviary_id)
+                                farmer.fetch_dynamics()
+                                new_state = state + ((new_aviary_id, lote.plote_id, "T"),)
+                                new_production = production + lote.plote_production
+                                new_assignments = assignments + [(t, new_aviary_id, lote.plote_id, "T")]
+                                dp[t][new_state] = (new_production, new_assignments)
+                            elif target_phase == "produccion" and not target_aviary_ids:
+                                # Apply penalty only if transfer to "produccion" is not possible (TF)
+                                new_state = state + ((aviary.avi_id, lote.plote_id, "TF"),)
+                                new_production = production - 100000
+                                dp[t][new_state] = (new_production, assignments)
+
+                        # Option 3: Sell lote if in predescarte phase (S)
+                        if lote.plote_fase == "predescarte" or lote.is_selling:
+                            lote.sell_population()
+                            lote.is_selling = True
+                            farmer.fetch_dynamics()
+                            new_production -= lote.plote_production  # Reduce production due to selling
+                            new_state = state + ((aviary.avi_id, lote.plote_id, "S"),)
+                            dp[t][new_state] = (new_production, new_assignments)
+        
+    # Extract optimal solution
     max_production = 0
     optimal_assignments = []
     for state, (production, assignments) in dp[projection_time].items():
@@ -45,8 +76,8 @@ def dp_algo():
             max_production = production
             optimal_assignments = assignments
 
-    # Build the report based on the optimal assignments
-    for t, aviary_id, lote_id in optimal_assignments:
+    # Build the report
+    for t, aviary_id, lote_id, action in optimal_assignments:
         if t not in report:
             report[t] = []
         aviary = farmer.memo_aviaries[aviary_id]
@@ -58,6 +89,7 @@ def dp_algo():
             "avi_state": aviary.is_active,
             "avi_desinfection_state": aviary.needs_disinfection,
             "avi_fase": aviary.avi_fase,
+            "action": action,
             "avi_assigned_lote": {
                 "lote_id": lote.plote_id,
                 "lote_name": lote.plote_name,
@@ -71,7 +103,12 @@ def dp_algo():
         })
 
     return jsonify(report)
-            
+
+
+        
+
+
+
 
 
 
