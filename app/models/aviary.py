@@ -23,7 +23,7 @@ class Aviario:
     def __repr__(self):
         return (f"Aviario(avi_id={self.avi_id}, avi_name={self.avi_name},"
                 f"avi_capacidad_autorizada={self.avi_capacidad_autorizada}, "
-                f"avi_etapa={self.avi_etapa}, avi_desinfeccion={self.production})")
+                f"avi_desinfeccion={self.production})")
 
     def set_activate(self):
         if self.is_active == False:

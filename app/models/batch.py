@@ -37,7 +37,7 @@ class Lote:
                 f"plote_pad_id={self.plote_pad_id}, plote_eprod={self.plote_eprod}, plote_fnac_a={self.plote_fnac_a}, "
                 f"plote_fnac_b={self.plote_fnac_b}, plote_fprod={self.plote_fprod}, plote_date={self.plote_date}, "
                 f"plote_age_days={self.plote_age_days}, plote_age_weeks={self.plote_age_weeks}, plote_avi_id={self.plote_avi_id}, "
-                f"plote_cantidad={self.plote_cantidad}, plote_cvtadia={self.plote_cvtadia}, plote_state={self.plote_state}, "
+                f"plote_cantidad={self.plote_cantidad}, plote_cvtadia={self.plote_cvtadia}, "
                 f"bio_patterns={self.bio_patterns}, assigned_aviario={self.assigned_aviario})")
 
     ############################ Functions that create identity for the Lote ###########################

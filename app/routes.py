@@ -8,8 +8,8 @@ routes = Blueprint('routes', __name__)
 def home():
     return render_template('index.html')
 
-@routes.route('/dp_report', methods=['POST'])
-def dp_report():
+@routes.route('/optimize', methods=['POST'])
+def optimize():
     return dp_algo()
 
 
