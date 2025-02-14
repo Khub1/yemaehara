@@ -2,10 +2,6 @@ from app.models import Lote, Aviario, Farmer
 from flask import jsonify, request
 from datetime import datetime, timedelta
 
-from app.models import Lote, Aviario, Farmer
-from flask import jsonify, request
-from datetime import datetime, timedelta
-
 def dp_algo():
     """Service function to optimize aviary allocation using DP."""
     try:
