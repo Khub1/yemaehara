@@ -25,6 +25,7 @@ class Farmer:
                     AviarioX = Aviario(aviary.avi_id)
                     AviarioX.avi_name = aviary.avi_name
                     AviarioX.avi_capacidad_autorizada = aviary.avi_capacidad_autorizada
+                    AviarioX.needs_disinfection = (aviary.avi_desf_est == 1)
                     fase_map = {
                         aviary.avi_recria: "recria",
                         aviary.avi_produccion: "produccion",

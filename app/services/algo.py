@@ -7,7 +7,6 @@ def dp_algo():
     """Flask service function to optimize aviary allocation using DP."""
     try:
         data = request.get_json()
-        print("Received data:", data)  # Debugging
 
         avi_ids = data.get('avi_ids')
         lote_ids = data.get('lote_ids')
@@ -18,9 +17,20 @@ def dp_algo():
         farmer.fetch_aviaries(avi_ids)
         farmer.fetch_lotes(lote_ids)
 
+
         # If fetches return empty, return an error
         if not farmer.memo_aviaries or not farmer.memo_lotes:
             return jsonify({"error": "No aviaries or lotes found"}), 400
+        else:
+            print("Initial data fetched successfully")
+
+        #Initial aviary allocation set by database data
+        for aviary in farmer.memo_aviaries.values():
+            for lote in farmer.memo_lotes.values():
+                if lote.plote_avi_id == aviary.avi_id:
+                    aviary.allocated_lote = lote.plote_id
+                    lote.plote_fase = aviary.avi_fase
+
 
         # Initialize DP table
         dp = [{} for _ in range(projection_time + 1)]
@@ -30,7 +40,8 @@ def dp_algo():
         for t in range(1, projection_time + 1):
             current_date = initial_date + timedelta(days=t - 1)
             farmer.set_date(current_date)
-
+            print(f"Processing time step {t} ({current_date})")
+                
             next_dp = {}  # Next state storage
 
             for system_state, production in dp[t - 1].items():
@@ -71,27 +82,53 @@ def generate_next_states(system_state, farmer, t):
     aviary_combinations = []
     
     for aviary in farmer.memo_aviaries.values():
+        
+        print(f"Processing possible state combinations for aviary {aviary.avi_id} at time step {t} ...")
         possible_states = []
 
-        if not aviary.allocated_lote and aviary.need_disinfection:
+        if not aviary.allocated_lote and aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "D"))  # Disinfect
-        else:
+        elif not aviary.allocated_lote and not aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "I"))  # Inactivate
         
+
+
         for lote in farmer.memo_lotes.values():
+
+            lote.set_plote_age() # Update lote age
+            
             if lote.plote_avi_id == aviary.avi_id:
-                possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))  # Remain
 
                 if lote.plote_fase == "recria" and lote.plote_age_weeks >= lote.plote_eprod:
                     possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))  # Transfer
+                else:
+                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))  # Remain
 
-                if lote.plote_fase == "predescarte" or lote.is_selling:
-                    possible_states.append((t, aviary.avi_id, lote.plote_id, "S"))  # Sell
-        
+                if lote.plote_fase == "produccion":
+                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))  # Remain
+                    possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))  # Transfer
+
+                if lote.plote_fase == "predescarte":
+                    if lote.is_selling:
+                        possible_states.append((t, aviary.avi_id, lote.plote_id, "S"))  # Sell
+                    else:
+                        possible_states.append((t, aviary.avi_id, lote.plote_id, "R")) # Remain
+                        possible_states.append((t, aviary.avi_id, lote.plote_id, "S")) # Sell
+
         aviary_combinations.append(possible_states)
+        
 
     # Generate all valid system state combinations
-    return [tuple(combination) for combination in itertools.product(*aviary_combinations)]
+    all_combinations = itertools.product(*aviary_combinations)
+
+    # Convert to set to ensure uniqueness
+    unique_combinations = {tuple(combination) for combination in all_combinations if len(combination) == len(farmer.memo_aviaries)}
+
+    # Print unique combinations
+    for combination in unique_combinations:
+        print(combination)
+
+    return list(unique_combinations)
 
 
 def calculate_production(system_state, farmer):
