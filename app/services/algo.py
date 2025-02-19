@@ -1,7 +1,8 @@
 from app.models import Lote, Aviario, Farmer
 from flask import jsonify, request
 from datetime import datetime, timedelta
-import itertools
+import itertools, copy
+
 
 def dp_algo():
     """Flask service function to optimize aviary allocation using DP."""
@@ -24,6 +25,10 @@ def dp_algo():
         else:
             print("Initial data fetched successfully")
 
+        # Initialize DP table
+        dp = [{} for _ in range(projection_time + 1)]
+        dp[0] = {(): 0}  # Initial state (empty system) with zero production
+
         #Initial aviary allocation set by database data
         for aviary in farmer.memo_aviaries.values():
             for lote in farmer.memo_lotes.values():
@@ -31,10 +36,6 @@ def dp_algo():
                     aviary.allocated_lote = lote.plote_id
                     lote.plote_fase = aviary.avi_fase
 
-
-        # Initialize DP table
-        dp = [{} for _ in range(projection_time + 1)]
-        dp[0] = {(): 0}  # Initial state (empty system) with zero production
 
         # Dynamic Programming process
         for t in range(1, projection_time + 1):
@@ -45,9 +46,11 @@ def dp_algo():
             next_dp = {}  # Next state storage
 
             for system_state, production in dp[t - 1].items():
-                # Generate possible next system states
+                # Generate possible next system states and farmers clones for each to manage
                 for new_system_state in generate_next_states(system_state, farmer, t):
-                    new_production = calculate_production(new_system_state, farmer)
+                    farmer_clone = copy.deepcopy(farmer)
+                    new_production = production + calculate_production(new_system_state, farmer_clone)[1]
+                    farmer_clone = calculate_production(new_system_state, farmer_clone)[0]
 
                     # Store the best production for this state
                     if new_system_state not in next_dp or next_dp[new_system_state] < new_production:
@@ -83,15 +86,12 @@ def generate_next_states(system_state, farmer, t):
     
     for aviary in farmer.memo_aviaries.values():
         
-        print(f"Processing possible state combinations for aviary {aviary.avi_id} at time step {t} ...")
         possible_states = []
 
         if not aviary.allocated_lote and aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "D"))  # Disinfect
         elif not aviary.allocated_lote and not aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "I"))  # Inactivate
-        
-
 
         for lote in farmer.memo_lotes.values():
 
@@ -119,31 +119,44 @@ def generate_next_states(system_state, farmer, t):
         
 
     # Generate all valid system state combinations
-    all_combinations = itertools.product(*aviary_combinations)
-
-    # Convert to set to ensure uniqueness
-    unique_combinations = {tuple(combination) for combination in all_combinations if len(combination) == len(farmer.memo_aviaries)}
+    unique_combinations = list({tuple(sorted(combination, key=lambda x: x[1])) for combination in itertools.product(*aviary_combinations)})
 
     # Print unique combinations
     for combination in unique_combinations:
         print(combination)
 
-    return list(unique_combinations)
+    return unique_combinations
 
 
 def calculate_production(system_state, farmer):
     """Computes the total production for a given system state."""
-    total_production = 0
+    print(f"Calculating production for system state: {system_state}")
     
     for (t, aviary_id, lote_id, action) in system_state:
-        if lote_id and action in ["R", "T"]:
-            lote = farmer.memo_lotes[lote_id]
-            total_production += lote.plote_production
+        #print representation of the aviary
+        lote = farmer.memo_lotes.get(lote_id)
+        print(lote.__repr__())
+        aviary = farmer.memo_aviaries.get(aviary_id)
+        print(aviary.__repr__())
 
-        if action == "TF":  # Transfer Failed penalty
-            total_production -= 100000
+        if action == "D":
+            aviary.schedule_disinfection()
+            print(f"Aviary {aviary_id} scheduled for disinfection")
+        elif action == "I":
+            aviary.set_inactivate()
+            print(f"Aviary {aviary_id} inactivated")
+        elif action == "R":
+            print(f"Lote {lote_id} remains in aviary {aviary_id}")  
+            continue
+        elif action == "T" or action == "S":
+            print(f"Transferring lote {lote_id} to aviary {aviary_id}")
+            farmer.transfer_lote(lote_id)
 
-    return total_production
+
+    # sys_production = farmer.fetch_dynamics()
+    # print(f"System production: {sys_production}")
+
+    # return farmer, sys_production
 
 
 def extract_optimal_solution(dp, projection_time):

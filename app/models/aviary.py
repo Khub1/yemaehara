@@ -7,7 +7,7 @@ class Aviario:
     def __init__(self, avi_id):
         self.avi_id = avi_id
         self.avi_name = None
-        self.avi_capacidad_autorizada = None
+        self.avi_capacidad_ideal = None
         self.avi_fase = None
         #######################################
         self.needs_disinfection = False
@@ -22,7 +22,7 @@ class Aviario:
 
     def __repr__(self):
         return (f"Aviario(avi_id={self.avi_id}, avi_name={self.avi_name},"
-                f"avi_capacidad_autorizada={self.avi_capacidad_autorizada}, "
+                f"avi_capacidad_ideal={self.avi_capacidad_ideal}, "
                 f"avi_desinfeccion={self.production})")
 
     def set_activate(self):
@@ -43,7 +43,7 @@ class Aviario:
         
     def set_inactivate(self):
         self.is_active = False
-        self.schedule_disinfection(self.date)
+        self.schedule_disinfection()
 
     def schedule_disinfection(self):
         self.needs_disinfection = True

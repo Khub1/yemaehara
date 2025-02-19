@@ -24,7 +24,7 @@ class Farmer:
                 for aviary in aviaries:
                     AviarioX = Aviario(aviary.avi_id)
                     AviarioX.avi_name = aviary.avi_name
-                    AviarioX.avi_capacidad_autorizada = aviary.avi_capacidad_autorizada
+                    AviarioX.avi_capacidad_ideal = aviary.avi_capacidad_ideal
                     AviarioX.needs_disinfection = (aviary.avi_desf_est == 1)
                     fase_map = {
                         aviary.avi_recria: "recria",
@@ -78,10 +78,13 @@ class Farmer:
 
     def fetch_dynamics(self):
         """Fetch and update the dynamics for all lotes"""
+        production = 0
         for lote in self.memo_lotes.values():
             lote.set_plote_age()
             lote.fetch_bios()
-            lote.population_dynamics()
+            dynamics = lote.population_dynamics()
+            production += dynamics[0]
+        return production
 
     def allocate_lote(self, lote_id, avi_id):
         """Allocate a lote to a different aviary if conditions are met"""
@@ -110,7 +113,7 @@ class Farmer:
                     print(f"Aviary {aviary.avi_id} is active, cannot assign lote {lote.plote_id}")
                 elif aviary.needs_disinfection:
                     print(f"Aviary {aviary.avi_id} needs disinfection, cannot assign lote {lote.plote_id}")
-                elif lote.plote_cantidad > aviary.avi_capacidad_autorizada:
+                elif lote.plote_cantidad > aviary.avi_capacidad_ideal:
                     print(f"Lote {lote.plote_id} population exceeds aviary {aviary.avi_id} capacity, cannot assign")
                 else:
                     available_aviaries.append(aviary.avi_id)
