@@ -46,10 +46,14 @@ class Aviario:
         self.schedule_disinfection()
 
     def schedule_disinfection(self):
+        if self.date is None:
+            raise ValueError(f"Cannot schedule disinfection for aviary {self.avi_id}: date not set")
         self.needs_disinfection = True
-        self.disinfeccion_due_date = self.date + timedelta(days=self.disinfection_period_days)
+        self.disinfection_due_date = self.date + timedelta(days=self.disinfection_period_days)
 
     def check_disinfection_due(self):
-        return self.date >= self.disinfeccion_due_date
+        if self.disinfection_due_date is None:
+            return False  # Not scheduled yet, so not due
+        return self.date >= self.disinfection_due_date
 
 

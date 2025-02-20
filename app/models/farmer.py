@@ -89,16 +89,14 @@ class Farmer:
         return agg_production
 
     def allocate_lote(self, lote_id, avi_id):
-        """Allocate a lote to a different aviary if conditions are met"""
         lote = self.memo_lotes.get(lote_id)
         next_aviary = self.memo_aviaries.get(avi_id)
-        previous_aviary= self.memo_aviaries.get(lote.plote_avi_id)
+        previous_aviary = self.memo_aviaries.get(lote.plote_avi_id)
 
-        # Set the old aviary to need disinfection
         if previous_aviary:
-            previous_aviary.needs_disinfection = True
             previous_aviary.allocated_lote = None
-            print(f"Aviary {previous_aviary.avi_id} needs disinfection")
+            previous_aviary.set_inactivate()  # Schedules disinfection and sets due date
+            print(f"Aviary {previous_aviary.avi_id} scheduled for disinfection")
 
         lote.plote_avi_id = avi_id
         next_aviary.allocated_lote = lote_id
@@ -107,49 +105,49 @@ class Farmer:
         print(f"Lote {lote_id} allocated to aviary {avi_id} in phase {lote.plote_fase}")
 
     def find_aviary(self, fase, lote):
-        """Find available aviaries for a given phase and lote"""
         available_aviaries = []
         for aviary in self.memo_aviaries.values():
             if aviary.avi_fase == fase and aviary.allocated_lote is None:
+                if aviary.needs_disinfection:
+                    if aviary.check_disinfection_due():
+                        aviary.needs_disinfection = False  # Disinfection complete
+                    else:
+                        print(f"Aviary {aviary.avi_id} is under disinfection until {aviary.disinfection_due_date}")
+                        continue
                 if aviary.is_active:
                     print(f"Aviary {aviary.avi_id} is active, cannot assign lote {lote.plote_id}")
-                elif aviary.needs_disinfection:
-                    print(f"Aviary {aviary.avi_id} needs disinfection, cannot assign lote {lote.plote_id}")
-                elif lote.plote_cantidad > aviary.avi_capacidad_ideal:
-                    print(f"Lote {lote.plote_id} population exceeds aviary {aviary.avi_id} capacity, cannot assign")
-                else:
-                    available_aviaries.append(aviary.avi_id)
+                    continue
+                if lote.plote_cantidad > aviary.avi_capacidad_ideal:
+                    print(f"Lote {lote.plote_id} exceeds capacity of aviary {aviary.avi_id}")
+                    continue
+                available_aviaries.append(aviary.avi_id)
         print(f"Available aviaries for {fase}: {available_aviaries}")
         return available_aviaries
     
     def transfer_lote(self, lote_id):
-        """Transfer a lote to a target phase aviary if it meets the criteria"""
         lote = self.memo_lotes.get(lote_id)
+        if not lote:
+            return  # Invalid lote
         
         if lote.plote_fase == "recria" and lote.plote_age_weeks >= lote.plote_eprod:
             available_aviaries = self.find_aviary("produccion", lote)
-            print(f"Available production aviaries for lote {lote_id}: {available_aviaries}")
             target_aviary_id = available_aviaries[0] if available_aviaries else None
-            print(f"Set target production aviary for lote {lote_id}: {target_aviary_id}")
-            if not target_aviary_id:
-                print(f"No available production aviary found")
-            else:
+            if target_aviary_id:
                 self.allocate_lote(lote_id, target_aviary_id)
-                print(f"Lote {lote_id} transferred to production aviary {target_aviary_id}")
-                    
+                        
         if lote.plote_fase == "produccion":
             available_aviaries = self.find_aviary("predescarte", lote)
-            print(f"Available predescarte aviaries for lote {lote_id}: {available_aviaries}")
             target_aviary_id = available_aviaries[0] if available_aviaries else None
-            print(f"Set target predescarte aviary for lote {lote_id}: {target_aviary_id}")
-            if not target_aviary_id:
-                print(f"No available predescarte aviary found")
-            else:
+            if target_aviary_id:
                 self.allocate_lote(lote_id, target_aviary_id)
-                print(f"Lote {lote_id} transferred to predescarte aviary {target_aviary_id}")
 
         if lote.plote_fase == "predescarte":
-            #sell population 
             print(f"Selling population for lote {lote_id}")
             lote.sell_population()
+            if lote.plote_cantidad <= 0:
+                aviary = self.memo_aviaries.get(lote.plote_avi_id)
+                if aviary:
+                    aviary.allocated_lote = None
+                    aviary.set_inactivate()  # Trigger disinfection
+                    print(f"Aviary {aviary.avi_id} scheduled for disinfection after selling lote {lote_id}")
             print(f"Lote {lote_id} sold")

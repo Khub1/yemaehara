@@ -5,10 +5,8 @@ import itertools, copy
 
 
 def dp_algo():
-    """Flask service function to optimize aviary allocation using DP."""
     try:
         data = request.get_json()
-
         avi_ids = data.get('avi_ids')
         lote_ids = data.get('lote_ids')
         projection_time = data.get('projection_time')
@@ -17,51 +15,41 @@ def dp_algo():
         farmer = Farmer()
         farmer.fetch_aviaries(avi_ids)
         farmer.fetch_lotes(lote_ids)
-
-        # If fetches return empty, return an error
         if not farmer.memo_aviaries or not farmer.memo_lotes:
             return jsonify({"error": "No aviaries or lotes found"}), 400
-        else:
-            print("Initial data fetched successfully")
+        print("Initial data fetched successfully")
+        farmer.set_date(initial_date)
 
-        # Initialize DP table
-        dp = [{} for _ in range(projection_time + 1)]
-        dp[0] = {(): 0}  # Initial state (empty system) with zero production
-
-        #Initial aviary allocation set by database data
         for aviary in farmer.memo_aviaries.values():
             for lote in farmer.memo_lotes.values():
                 if lote.plote_avi_id == aviary.avi_id:
                     aviary.allocated_lote = lote.plote_id
                     lote.plote_fase = aviary.avi_fase
 
+        # Fresh DP table
+        dp = [{} for _ in range(projection_time + 1)]
+        dp[0] = {tuple(): (0, farmer)}
 
-        # Dynamic Programming process
         for t in range(1, projection_time + 1):
             current_date = initial_date + timedelta(days=t - 1)
-            farmer.set_date(current_date)
-            print(f"Processing time step {t} ({current_date})")
-                
-            next_dp = {}  # Next state storage
-
-            for system_state, production in dp[t - 1].items():
-                # Generate possible next system states and farmers clones for each to manage
-                for new_system_state in generate_next_states(system_state, farmer, t):
-                    farmer_clone = copy.deepcopy(farmer)
-                    new_production = production + calculate_production(new_system_state, farmer_clone)[1]
-                    farmer_clone = calculate_production(new_system_state, farmer_clone)[0]
-
-                    # Store the best production for this state
-                    if new_system_state not in next_dp or next_dp[new_system_state] < new_production:
-                        next_dp[new_system_state] = new_production
-
-            # Move to next time step
+            next_dp = {}
+            for system_state, (production, farmer_state) in dp[t - 1].items():
+                farmer_clone = copy.deepcopy(farmer_state)
+                farmer_clone.set_date(current_date)
+                for new_system_state in generate_next_states(system_state, farmer_clone, t):
+                    new_farmer = copy.deepcopy(farmer_clone)
+                    new_production, updated_farmer = calculate_production(new_system_state, new_farmer)
+                    total_production = production + new_production
+                    if new_system_state in next_dp:
+                        current_val = next_dp[new_system_state]
+                        print(f"Comparing existing: {current_val[0]} (type: {type(current_val[0])}) with new: {total_production} (type: {type(total_production)})")
+                        if not isinstance(current_val[0], (int, float)):
+                            raise ValueError(f"Invalid type in next_dp: {type(current_val[0])}")
+                    if new_system_state not in next_dp or next_dp[new_system_state][0] < total_production:
+                        next_dp[new_system_state] = (total_production, updated_farmer)
             dp[t] = next_dp
 
-        # Extract the best solution
         max_production, optimal_state = extract_optimal_solution(dp, projection_time)
-
-        # Build response
         response = {
             "max_production": max_production,
             "optimal_state": [
@@ -69,15 +57,14 @@ def dp_algo():
                 for (t, aviary, lote, action) in optimal_state
             ]
         }
-
         return jsonify(response)
 
     except Exception as e:
-        print("Error:", str(e))  # Debugging
+        print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
-# 🔹 Helper Functions
+
 
 def generate_next_states(system_state, farmer, t):
     """Generates all possible next system states for time step t."""
@@ -131,6 +118,7 @@ def calculate_production(system_state, farmer):
     """Computes the total production for a given system state."""
     print(f"Calculating production for system state: {system_state}")
     
+    total_production = 0
     for (t, aviary_id, lote_id, action) in system_state:
         #print representation of the aviary
         lote = farmer.memo_lotes.get(lote_id)
@@ -152,10 +140,10 @@ def calculate_production(system_state, farmer):
             print(f"Unknown action {action}")
 
         # Compute population dynamics
-    production = farmer.fetch_dynamics()
-    print(f"Production for system state {system_state}: {production}")
+    total_production = farmer.fetch_dynamics()
+    print(f"Production for system state {system_state}: {total_production}")
 
-    return farmer, production
+    return total_production, farmer
 
 
 def extract_optimal_solution(dp, projection_time):
