@@ -78,13 +78,15 @@ class Farmer:
 
     def fetch_dynamics(self):
         """Fetch and update the dynamics for all lotes"""
-        production = 0
+        agg_production = 0
         for lote in self.memo_lotes.values():
-            lote.set_plote_age()
+            #print representation of the lote
+            print(lote.__repr__())
             lote.fetch_bios()
             dynamics = lote.population_dynamics()
-            production += dynamics[0]
-        return production
+            agg_production += dynamics[0]
+
+        return agg_production
 
     def allocate_lote(self, lote_id, avi_id):
         """Allocate a lote to a different aviary if conditions are met"""
@@ -129,23 +131,25 @@ class Farmer:
             print(f"Available production aviaries for lote {lote_id}: {available_aviaries}")
             target_aviary_id = available_aviaries[0] if available_aviaries else None
             print(f"Set target production aviary for lote {lote_id}: {target_aviary_id}")
-            target_fase = "produccion"
+            if not target_aviary_id:
+                print(f"No available production aviary found")
+            else:
+                self.allocate_lote(lote_id, target_aviary_id)
+                print(f"Lote {lote_id} transferred to production aviary {target_aviary_id}")
                     
-        elif lote.plote_fase == "produccion":
+        if lote.plote_fase == "produccion":
             available_aviaries = self.find_aviary("predescarte", lote)
             print(f"Available predescarte aviaries for lote {lote_id}: {available_aviaries}")
             target_aviary_id = available_aviaries[0] if available_aviaries else None
             print(f"Set target predescarte aviary for lote {lote_id}: {target_aviary_id}")
-            target_fase = "predescarte"
+            if not target_aviary_id:
+                print(f"No available predescarte aviary found")
+            else:
+                self.allocate_lote(lote_id, target_aviary_id)
+                print(f"Lote {lote_id} transferred to predescarte aviary {target_aviary_id}")
 
-        elif lote.plote_fase == "predescarte":
+        if lote.plote_fase == "predescarte":
             #sell population 
             print(f"Selling population for lote {lote_id}")
             lote.sell_population()
-
-        
-        if target_aviary_id:
-            self.allocate_lote(lote_id, target_aviary_id)
-            print(f"Lote {lote_id} transferred to {target_fase} aviary {target_aviary_id}")
-        else:
-            print(f"No available {target_fase} aviary found")
+            print(f"Lote {lote_id} sold")

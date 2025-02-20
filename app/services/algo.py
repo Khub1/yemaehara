@@ -18,7 +18,6 @@ def dp_algo():
         farmer.fetch_aviaries(avi_ids)
         farmer.fetch_lotes(lote_ids)
 
-
         # If fetches return empty, return an error
         if not farmer.memo_aviaries or not farmer.memo_lotes:
             return jsonify({"error": "No aviaries or lotes found"}), 400
@@ -135,9 +134,8 @@ def calculate_production(system_state, farmer):
     for (t, aviary_id, lote_id, action) in system_state:
         #print representation of the aviary
         lote = farmer.memo_lotes.get(lote_id)
-        print(lote.__repr__())
         aviary = farmer.memo_aviaries.get(aviary_id)
-        print(aviary.__repr__())
+
 
         if action == "D":
             aviary.schedule_disinfection()
@@ -146,17 +144,18 @@ def calculate_production(system_state, farmer):
             aviary.set_inactivate()
             print(f"Aviary {aviary_id} inactivated")
         elif action == "R":
-            print(f"Lote {lote_id} remains in aviary {aviary_id}")  
-            continue
+            print(f"Lote {lote_id} remains in aviary {aviary_id}")  # Do nothing
         elif action == "T" or action == "S":
             print(f"Transferring lote {lote_id} to aviary {aviary_id}")
             farmer.transfer_lote(lote_id)
+        else:
+            print(f"Unknown action {action}")
 
+        # Compute population dynamics
+    production = farmer.fetch_dynamics()
+    print(f"Production for system state {system_state}: {production}")
 
-    # sys_production = farmer.fetch_dynamics()
-    # print(f"System production: {sys_production}")
-
-    # return farmer, sys_production
+    return farmer, production
 
 
 def extract_optimal_solution(dp, projection_time):

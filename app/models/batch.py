@@ -25,7 +25,6 @@ class Lote:
         self.is_selling = False
         # Estado de producción 
         self.plote_fase = None
-        self.assigned_aviario = None
         # Patrones de produccion
         self.bio_patterns = None
         self.plote_production = None
@@ -38,7 +37,7 @@ class Lote:
                 f"plote_fnac_b={self.plote_fnac_b}, plote_fprod={self.plote_fprod}, plote_date={self.plote_date}, "
                 f"plote_age_days={self.plote_age_days}, plote_age_weeks={self.plote_age_weeks}, plote_avi_id={self.plote_avi_id}, "
                 f"plote_cantidad={self.plote_cantidad}, plote_cvtadia={self.plote_cvtadia}, "
-                f"bio_patterns={self.bio_patterns}, assigned_aviario={self.assigned_aviario})")
+                f"bio_patterns={self.bio_patterns})")
 
     ############################ Functions that create identity for the Lote ###########################
     def _set_plote_id(self):
@@ -185,9 +184,11 @@ class Lote:
                 self.plote_deaths = round(self.plote_cantidad * mortality)
                 self.plote_production = round(self.plote_cantidad * productivity)
                 self.plote_cantidad -= self.plote_deaths
-                return print(f"Population dynamics computed: {self.plote_production} produced, {self.plote_deaths} dead.")
+                print(f"Population dynamics computed: {self.plote_production} produced, {self.plote_deaths} dead.")
+                return self.plote_production, self.plote_deaths
             else:
-                print("No population dynamics to compute.")
+                print(f"No population left in lote {self.plote_id}")
+                return 0, 0
         except Exception as e:
             print(f"Error computing population dynamics: {str(e)}")
             return
@@ -198,15 +199,12 @@ class Lote:
             if self.plote_cantidad > 0:
                 if cantidad > self.plote_cantidad:
                     cantidad = self.plote_cantidad
-                self.plote_cantidad -= cantidad
-                print(f"{cantidad} population sold from lote {self.plote_id}")
-                if self.plote_cantidad == 0:
-                    aviary = self.farmer.memo_aviaries.get(self.plote_avi_id)
-                    if aviary:
-                        aviary.needs_disinfection = True
-                        print(f"Aviary {aviary.avi_id} needs disinfection")
-            else:
-                print("No population to sell.")
+                    self.plote_cantidad -= cantidad
+                    print(f"{cantidad} population sold from lote {self.plote_id}")
+                    if self.plote_cantidad <= 0:
+                        return 0
+                    else:
+                        return print(f"Remaining population in lote {self.plote_id}: {self.plote_cantidad}")
         except Exception as e:
             print(f"Error selling population: {str(e)}")
 
