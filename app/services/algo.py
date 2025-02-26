@@ -146,17 +146,50 @@ def calculate_production(system_state, farmer):
     return total_production, farmer
 
 
+# def extract_optimal_solution(dp, projection_time):
+#     max_production = float('-inf')
+#     optimal_state = None
+#     print(f"Extracting solution at t={projection_time}, dp[{projection_time}] has {len(dp[projection_time])} states")
+#     for system_state, value in dp[projection_time].items():
+#         production, farmer = value  # Explicit unpacking
+#         print(f"State={system_state}, Production={production} (type: {type(production)})")
+#         if not isinstance(production, (int, float)):
+#             raise ValueError(f"Invalid production type in dp[{projection_time}]: {type(production)}")
+#         if production > max_production:
+#             max_production = production
+#             optimal_state = system_state
+#     return max_production, optimal_state
+
 def extract_optimal_solution(dp, projection_time):
-    """Finds the optimal state with max production from the DP results."""
+    if not dp[projection_time]:
+        raise ValueError(f"No states at final time step t={projection_time}")
+    
     max_production = float('-inf')
     optimal_state = None
-
-    for system_state, production in dp[projection_time].items():
+    print(f"Extracting solution at t={projection_time}, dp[{projection_time}] has {len(dp[projection_time])} states")
+    
+    for system_state, value in dp[projection_time].items():
+        production, farmer, prev_state = value  # Unpack three elements
+        print(f"State={system_state}, Production={production} (type: {type(production)})")
+        if not isinstance(production, (int, float)):
+            raise ValueError(f"Invalid production type in dp[{projection_time}]: {type(production)}")
         if production > max_production:
             max_production = production
             optimal_state = system_state
 
-    return max_production, optimal_state
+    # Backtrack to reconstruct the sequence of states
+    state_sequence = []
+    current_state = optimal_state
+    for t in range(projection_time, 0, -1):
+        state_sequence.append(current_state)
+        if t > 1:
+            current_state = dp[t][current_state][2]
+    state_sequence.reverse()
+
+    return max_production, state_sequence
+
+
+
 
 
 
