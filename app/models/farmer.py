@@ -68,6 +68,18 @@ class Farmer:
         except Exception as e:
             print(f"Database error: {str(e)}")
             return []
+        
+    def buy_lote(self, raza_id, pad_id, cantidad):
+        """Create a new Lote object and save it to the database using"""
+        new_lote = Lote(raza_id, pad_id, cantidad)
+        new_lote._set_plote_id()
+        new_lote._set_plote_name()
+        new_lote._set_plote_fnac()
+        new_lote._set_plote_fprod()
+        new_lote._set_plote_cvtadia()
+        new_lote._save_to_db()
+        self.memo_lotes[new_lote.plote_id] = new_lote
+        return new_lote
 
     def set_date(self, date):
         """Set the system date for all aviaries and lotes"""
@@ -151,3 +163,9 @@ class Farmer:
                     aviary.set_inactivate()  # Trigger disinfection
                     print(f"Aviary {aviary.avi_id} scheduled for disinfection after selling lote {lote_id}")
             print(f"Lote {lote_id} sold")
+
+    def buy_lote(self, raza_id, pad_id, cantidad=60000):
+        """Create a new Lote object by using set_lote_instantiation"""
+        new_lote = Lote(raza_id, pad_id, cantidad)
+        new_lote.set_lote_instantiation()
+        self.memo_lotes[new_lote.plote_id] = new_lote
