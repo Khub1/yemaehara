@@ -5,6 +5,7 @@ import copy
 from app.services.state_generator import generate_next_states
 from app.services.dynamics_evaluator import evaluate_dynamics
 from app.services.solution_retriever import retrieve_optimal_solution
+from app.services.input_validation import fix_init
 
 def dp_algo():
     try:
@@ -23,7 +24,13 @@ def dp_algo():
         if not farmer.memo_aviaries or not farmer.memo_lotes:
             return jsonify({"error": "No aviaries or lotes found"}), 400
         print("Initial data fetched successfully")
+
         farmer.set_date(initial_date)
+        print("Date set successfully")
+
+        # Validate and correct initial state
+        farmer = fix_init(farmer)
+
         farmer.reset_new_lote_map()  # Reset new_lote_map before simulation
 
         for aviary in farmer.memo_aviaries.values():
@@ -130,9 +137,15 @@ def dp_algo():
 
         return jsonify(response)
 
+
+    except ValueError as ve:
+        # Catch ValueError from fix_init and return as JSON error
+        print(f"Validation error: {str(ve)}")
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
         
 
 
