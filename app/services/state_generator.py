@@ -4,34 +4,34 @@ from app.models import Farmer, Aviario, Lote
 
 def generate_next_states(system_state, farmer: Farmer, t: int):
     """
-    Generates all possible next system states for time step t, including buying new lotes.
+    Generates all possible next system states for time step t, including buying new lotes with a 14-day restriction.
     
     Args:
         system_state: Tuple representing the current system state.
         farmer: Farmer instance with current aviaries and lotes.
-        t: Current time step.
+        t: Current time step (assumed to be in days).
     
     Returns:
         List of tuples representing possible next states.
     """
     aviary_combinations = []
-
-    # Track newly created lote IDs to avoid duplicates
-    existing_lote_ids = set(farmer.memo_lotes.keys())
-    new_lote_counter = max(existing_lote_ids, default=0) + 1 if existing_lote_ids else 1
+    
+    # Check if a buy occurred within the last 14 days
+    can_buy = True
+    for (buy_t, _, _, buy_action) in farmer.new_lote_map.keys():
+        if buy_action == "B" and t - buy_t < 14:  # Assuming t is in days
+            can_buy = False
+            break
 
     for aviary in farmer.memo_aviaries.values():
         possible_states = []
-        # Disinfection state
         if not aviary.allocated_lote and aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "D"))
-        # Idle or Buy state
         elif not aviary.allocated_lote and not aviary.needs_disinfection:
             possible_states.append((t, aviary.avi_id, None, "I"))
-            if aviary.avi_fase == "recria" and aviary.avi_capacidad_ideal >= 60000:  # Default buy_cantidad
-                possible_states.append((t, aviary.avi_id, "NEW_LOTE", "B"))  # Placeholder for new lote
-
-        # Existing lote actions
+            if aviary.avi_fase == "recria" and aviary.avi_capacidad_ideal >= 60000 and can_buy:
+                possible_states.append((t, aviary.avi_id, "NEW_LOTE", "B"))
+    
         for lote in farmer.memo_lotes.values():
             lote.set_plote_age()
             if lote.plote_avi_id == aviary.avi_id:

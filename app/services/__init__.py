@@ -1,1 +1,1 @@
-from .algo import dp_algo
+from .dp_algorithm import dp_algo

@@ -170,3 +170,7 @@ class Farmer:
         new_lote = Lote(raza_id, pad_id, cantidad)
         new_lote.set_lote_instantiation()
         self.memo_lotes[new_lote.plote_id] = new_lote
+
+    def reset_new_lote_map(self):
+        """Reset the new_lote_map to an empty dictionary"""
+        self.new_lote_map = {}
