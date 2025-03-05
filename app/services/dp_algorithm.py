@@ -41,7 +41,7 @@ def dp_algo():
             for system_state, (production, farmer_state, prev_state) in dp[t - 1].items():
                 farmer_clone = copy.deepcopy(farmer_state)
                 farmer_clone.set_date(current_date)
-                for new_system_state in generate_next_states(system_state, farmer_clone, t):
+                for new_system_state in generate_next_states(farmer_clone, t):
                     new_farmer = copy.deepcopy(farmer_clone)
                     new_production, updated_farmer = evaluate_dynamics(new_system_state, new_farmer, raza_id, pad_id, buy_cantidad)
                     total_production = production + new_production

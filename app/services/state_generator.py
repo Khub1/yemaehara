@@ -1,13 +1,11 @@
-# app/services/state_generator.py
 import itertools
-from app.models import Farmer, Aviario, Lote
+from app.models import Farmer
 
-def generate_next_states(system_state, farmer: Farmer, t: int):
+def generate_next_states(farmer: Farmer, t: int):
     """
     Generates all possible next system states for time step t, including buying new lotes with a 14-day restriction.
     
     Args:
-        system_state: Tuple representing the current system state.
         farmer: Farmer instance with current aviaries and lotes.
         t: Current time step (assumed to be in days).
     
@@ -31,26 +29,24 @@ def generate_next_states(system_state, farmer: Farmer, t: int):
             possible_states.append((t, aviary.avi_id, None, "I"))
             if aviary.avi_fase == "recria" and aviary.avi_capacidad_ideal >= 60000 and can_buy:
                 possible_states.append((t, aviary.avi_id, "NEW_LOTE", "B"))
-    
+        
         for lote in farmer.memo_lotes.values():
-            lote.set_plote_age()
             if lote.plote_avi_id == aviary.avi_id:
-                if lote.plote_fase == "recria" and lote.plote_age_weeks >= lote.plote_eprod:
-                    possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))
-                else:
-                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))
-                if lote.plote_fase == "produccion":
-                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))
-                    possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))
-                if lote.plote_fase == "predescarte":
-                    if lote.is_selling:
-                        possible_states.append((t, aviary.avi_id, lote.plote_id, "S"))
-                    else:
+                lote.set_plote_age()  # Update lote age based on current date/time step
+                if aviary.avi_fase == "recria":
+                    if lote.plote_age_weeks < 19:
                         possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))
+                    else:
+                        possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))
+                elif aviary.avi_fase == "produccion":
+                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))  # Always allow remain
+                    if lote.plote_age_weeks >= 67:
+                        possible_states.append((t, aviary.avi_id, lote.plote_id, "T"))  # Allow transfer if age >= 67
+                elif aviary.avi_fase == "predescarte":
+                    possible_states.append((t, aviary.avi_id, lote.plote_id, "R"))
+                    if lote.is_selling:
                         possible_states.append((t, aviary.avi_id, lote.plote_id, "S"))
         aviary_combinations.append(possible_states)
     
     unique_combinations = list({tuple(sorted(combination, key=lambda x: x[1])) for combination in itertools.product(*aviary_combinations)})
-    for combination in unique_combinations:
-        print(f"Generated state at t={t}: {combination}")
     return unique_combinations
