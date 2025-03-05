@@ -8,6 +8,7 @@ class Farmer:
     def __init__(self):
         self.memo_aviaries = {}
         self.memo_lotes = {}
+        self.new_lote_map = {}
 
     def fetch_aviaries(self, avi_ids):
         """Retrieve aviaries by avi_ids or by matching avi_blo_id with blo_id from m_prm_bloques"""
