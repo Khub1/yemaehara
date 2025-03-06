@@ -85,7 +85,7 @@ class Farmer:
     def set_date(self, date):
         """Set the system date for all aviaries and lotes"""
         for aviary in self.memo_aviaries.values():
-            aviary.date = date
+            aviary.set_date(date)
         for lote in self.memo_lotes.values():
             lote.plote_date = date
 
@@ -108,7 +108,7 @@ class Farmer:
 
         if previous_aviary:
             previous_aviary.allocated_lote = None
-            previous_aviary.set_inactivate()  # Schedules disinfection and sets due date
+            previous_aviary.set_inactive()  # Schedules disinfection and sets due date
             print(f"Aviary {previous_aviary.avi_id} scheduled for disinfection")
 
         lote.plote_avi_id = avi_id
@@ -161,7 +161,7 @@ class Farmer:
                 aviary = self.memo_aviaries.get(lote.plote_avi_id)
                 if aviary:
                     aviary.allocated_lote = None
-                    aviary.set_inactivate()  # Trigger disinfection
+                    aviary.set_inactive()  # Trigger disinfection
                     print(f"Aviary {aviary.avi_id} scheduled for disinfection after selling lote {lote_id}")
             print(f"Lote {lote_id} sold")
 

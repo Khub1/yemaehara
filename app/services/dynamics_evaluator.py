@@ -17,7 +17,7 @@ def evaluate_dynamics(system_state, farmer: Farmer, raza_id: int = 24, pad_id: i
                 aviary.schedule_disinfection()
                 print(f"Aviary {aviary_id} scheduled for disinfection")
             elif action == "I":
-                aviary.set_inactivate()
+                aviary.set_inactive()
                 print(f"Aviary {aviary_id} inactivated")
             elif action == "B":
                 new_lote = farmer.buy_lote(raza_id, pad_id, buy_cantidad, id_escenario=1)

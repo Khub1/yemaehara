@@ -5,6 +5,7 @@ import copy
 from app.services.state_generator import generate_next_states
 from app.services.dynamics_evaluator import evaluate_dynamics
 from app.services.solution_retriever import retrieve_optimal_solution
+from app.services.input_initializer import init_adjust
 
 def dp_algo():
     try:
@@ -26,11 +27,8 @@ def dp_algo():
         farmer.set_date(initial_date)
         farmer.reset_new_lote_map()  # Reset new_lote_map before simulation
 
-        for aviary in farmer.memo_aviaries.values():
-            for lote in farmer.memo_lotes.values():
-                if lote.plote_avi_id == aviary.avi_id:
-                    aviary.allocated_lote = lote.plote_id
-                    lote.plote_fase = aviary.avi_fase
+        farmer = init_adjust(farmer)
+
 
         dp = [{} for _ in range(projection_time + 1)]
         dp[0] = {tuple(): (0, farmer, None)}
@@ -135,77 +133,6 @@ def dp_algo():
         return jsonify({"error": str(e)}), 500
         
 
-
-
-    #     all_actions = [action for state in state_sequence for action in state]
-    #     response = {
-    #         "max_production": max_production,
-    #         "optimal_state": [
-    #             {"t": t, "aviary_id": aviary, "lote_id": lote, "action": action}
-    #             for (t, aviary, lote, action) in all_actions
-    #         ]
-    #     }
-
-    #     # Print max production first
-    #     print(f"\nMaximum Production: {max_production}")
-
-    #     # Generate and print the table
-    #     print("\nOptimal State Transition Table:")
-    #     print("-" * 150)
-    #     print(f"{'t':<5} {'date':<12} {'aviary':<8} {'aviary type':<12} {'lote':<8} {'age (days)':<12} {'age (weeks)':<12} {'action':<16} {'pop before':<12} {'deaths':<8} {'pop now':<12} {'production':<12}")
-    #     print("-" * 150)
-
-    #     for t in range(1, projection_time + 1):
-    #         current_date = initial_date + timedelta(days=t - 1)
-    #         current_state = state_sequence[t - 1]
-    #         current_farmer = dp[t][current_state][1]
-    #         prev_farmer = dp[t-1][state_sequence[t-2]][1] if t > 1 else farmer
-
-    #         for (time, aviary_id, lote_id, action) in current_state:
-    #             aviary_type = current_farmer.memo_aviaries[aviary_id].avi_fase if aviary_id in current_farmer.memo_aviaries else "Unknown"
-    #             if lote_id:
-    #                 current_lote = current_farmer.memo_lotes.get(lote_id)
-    #                 prev_lote = prev_farmer.memo_lotes.get(lote_id) if t > 1 else None
-    #                 age_days = current_lote.plote_age_days if current_lote else "N/A"
-    #                 age_weeks = current_lote.plote_age_weeks if current_lote else "N/A"
-    #                 pop_before = current_lote.plote_cantidad if t == 1 else (prev_lote.plote_cantidad if prev_lote else current_lote.plote_cantidad)
-    #                 deaths = current_lote.plote_deaths if current_lote else 0
-    #                 pop_now = pop_before - deaths if current_lote else 0
-    #                 production = current_lote.plote_production if current_lote else 0
-    #                 # Ensure non-negative values
-    #                 pop_before = max(0, pop_before)
-    #                 deaths = max(0, deaths)
-    #                 pop_now = max(0, pop_now)
-    #                 production = max(0, production)
-    #             else:
-    #                 age_days = "N/A"
-    #                 age_weeks = "N/A"
-    #                 pop_before = "N/A"
-    #                 deaths = "N/A"
-    #                 pop_now = "N/A"
-    #                 production = "N/A"
-
-    #             # Determine action with transfer source
-    #             if t == 1:
-    #                 detailed_action = f"Initial ({action})"
-    #             else:
-    #                 prev_state = state_sequence[t - 2]
-    #                 prev_action = action
-    #                 for (prev_t, prev_aviary, prev_lote, prev_action_candidate) in prev_state:
-    #                     if prev_lote == lote_id and prev_aviary == aviary_id:
-    #                         prev_action = prev_action_candidate
-    #                     elif prev_lote == lote_id and prev_action_candidate == "T":
-    #                         prev_action = f"T (from {prev_aviary})"
-    #                 detailed_action = prev_action
-
-    #             print(f"{t:<5} {str(current_date):<12} {aviary_id:<8} {aviary_type:<12} {str(lote_id) if lote_id else 'None':<8} {str(age_days):<12} {str(age_weeks):<12} {detailed_action:<16} {str(pop_before):<12} {str(deaths):<8} {str(pop_now):<12} {str(production):<12}")
-    #     print("-" * 150)
-
-    #     return jsonify(response)
-
-    # except Exception as e:
-    #     print(f"Error: {str(e)}")
-    #     return jsonify({"error": str(e)}), 500
 
 
 
