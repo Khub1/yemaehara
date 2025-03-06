@@ -3,11 +3,6 @@ import re
 from datetime import datetime, timedelta
 from app.utils.database import get_connection  
 
-# app/models/aviary.py
-import re
-from datetime import datetime, timedelta
-from app.utils.database import get_connection  
-
 class Aviario:
     def __init__(self, avi_id, needs_disinfection=False):
         self.avi_id = avi_id
