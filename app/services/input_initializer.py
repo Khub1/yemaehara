@@ -32,12 +32,19 @@ def init_adjust(farmer: Farmer) -> Farmer:
             raise ValueError(f"Lote {lote.plote_id} has no valid age")
         print(f"Lote {lote.plote_id}: age={lote.plote_age_weeks}, avi_id={lote.plote_avi_id}")
 
-    # Step 2: Validate initial assignments and categorize aviaries (no state changes yet)
+    # Step 2: Validate initial assignments and categorize aviaries (preserve fetched state)
     for aviary in farmer.memo_aviaries.values():
-        # If initially needs disinfection, it’s already active with a due date (set via Farmer.set_date)
+        
+        # Set initial fetched assignments explicitly
+        for lote in farmer.memo_lotes.values():
+            if lote.plote_avi_id == aviary.avi_id and aviary.allocated_lote is None:
+                aviary.allocated_lote = lote.plote_id
+                aviary.set_active()  # Mark as active for initial assignment
+                print(f"Initial assignment: Lote {lote.plote_id} to aviary {aviary.avi_id}")
+
         if aviary.needs_disinfection:
             print(f"Aviary {aviary.avi_id} is under disinfection until {aviary.disinfection_due_date}")
-        elif aviary.allocated_lote is None:
+        elif aviary.allocated_lote is None:  # Only truly empty aviaries are free
             if aviary.avi_fase.lower() == "recria":
                 free_recria_avi.append(aviary)
                 print(f"Aviary {aviary.avi_id} added to free recria aviaries")
@@ -45,24 +52,22 @@ def init_adjust(farmer: Farmer) -> Farmer:
                 free_production_avi.append(aviary)
                 print(f"Aviary {aviary.avi_id} added to free production aviaries")
 
-        # Validate assigned lotes without modifying state
-        for lote in farmer.memo_lotes.values():
-            if lote.plote_avi_id == aviary.avi_id:
-                if lote.plote_cantidad > aviary.avi_capacidad_ideal:
-                    raise ValueError(f"Lote {lote.plote_id} (cantidad={lote.plote_cantidad}) exceeds capacity of aviary {aviary.avi_id} (capacidad={aviary.avi_capacidad_ideal})")
-                
-                aviary_phase = aviary.avi_fase.lower()
-                if aviary_phase == "recria" and lote.plote_age_weeks >= RECRIA_MAX_AGE:
-                    print(f"Lote {lote.plote_id} exceeds age limit ({lote.plote_age_weeks} >= {RECRIA_MAX_AGE}) for recria aviary {aviary.avi_id}, marking for production")
-                    reassign_to_production.append((lote, aviary))
-                elif aviary_phase in ("produccion", "predescarte") and lote.plote_age_weeks < RECRIA_MAX_AGE:
-                    print(f"Lote {lote.plote_id} below age limit ({lote.plote_age_weeks} < {RECRIA_MAX_AGE}) for {aviary_phase} aviary {aviary.avi_id}, marking for recria")
-                    reassign_to_recria.append((lote, aviary))
-                else:
-                    aviary.allocated_lote = lote.plote_id
-                    lote.plote_fase = aviary.avi_fase
-                    aviary.set_active()
-                    print(f"Lote {lote.plote_id} assigned to aviary {aviary.avi_id} in phase {aviary.avi_fase}")
+        # Validate assigned lotes without clearing yet
+        if aviary.allocated_lote:
+            lote = farmer.memo_lotes.get(aviary.allocated_lote)
+            if lote.plote_cantidad > aviary.avi_capacidad_ideal:
+                raise ValueError(f"Lote {lote.plote_id} (cantidad={lote.plote_cantidad}) exceeds capacity of aviary {aviary.avi_id} (capacidad={aviary.avi_capacidad_ideal})")
+            
+            aviary_phase = aviary.avi_fase.lower()
+            if aviary_phase == "recria" and lote.plote_age_weeks >= RECRIA_MAX_AGE:
+                print(f"Lote {lote.plote_id} exceeds age limit ({lote.plote_age_weeks} >= {RECRIA_MAX_AGE}) for recria aviary {aviary.avi_id}, marking for production")
+                reassign_to_production.append((lote, aviary))
+            elif aviary_phase in ("produccion", "predescarte") and lote.plote_age_weeks < RECRIA_MAX_AGE:
+                print(f"Lote {lote.plote_id} below age limit ({lote.plote_age_weeks} < {RECRIA_MAX_AGE}) for {aviary_phase} aviary {aviary.avi_id}, marking for recria")
+                reassign_to_recria.append((lote, aviary))
+            else:
+                lote.plote_fase = aviary.avi_fase
+                print(f"Lote {lote.plote_id} validated in aviary {aviary.avi_id} in phase {aviary.avi_fase}")
 
     # Print initial assignments before any reassignment changes
     print("\nInitial Assignments Before Reassignment:")
@@ -81,7 +86,7 @@ def init_adjust(farmer: Farmer) -> Farmer:
         source_aviary.set_inactive()
         print(f"Cleared lote {lote.plote_id} from aviary {source_aviary.avi_id} for reassignment")
 
-    # Step 4: Perform reassignments
+    # Step 4: Perform reassignments to free aviaries only
     for lote, _ in reassign_to_production:
         if free_production_avi:
             aviary = free_production_avi.pop()
